@@ -1,0 +1,15 @@
+// İnternetsiz açılma: ilk açılışta bütün dosyalar saklanır. Sürüm değişince eski önbellek silinir.
+const VERSION = 'oba-3';
+const FILES = ["./", "index.html", "gizlilik.html", "manifest.webmanifest", "css/ui.css", "src/input.js", "src/main.js", "src/ui/format.js", "src/ui/guide.js", "src/ui/hud.js", "src/ui/modals.js", "src/ui/panels.js", "src/net/ayar.js", "src/net/sunucu.js", "src/core/clock.js", "src/core/rng.js", "src/core/save.js", "src/render/people.js", "src/render/view.js", "src/audio/audio.js", "src/audio/music.js", "src/sim/advance.js", "src/sim/commands.js", "src/sim/economy.js", "src/sim/military.js", "src/sim/power.js", "src/sim/research.js", "src/sim/rng.js", "src/sim/state.js", "src/data/ages.js", "src/data/buildings.js", "src/data/camps.js", "src/data/plots.js", "src/data/research.js", "src/data/resources.js", "src/data/sprites.js", "src/data/units.js", "assets/b_agil1.png", "assets/b_agil2.png", "assets/b_ambar1.png", "assets/b_ambar2.png", "assets/b_avci1.png", "assets/b_avci2.png", "assets/b_cadir1.png", "assets/b_cadir2.png", "assets/b_demirci.png", "assets/b_demirocagi.png", "assets/b_gozcu1.png", "assets/b_gozcu2.png", "assets/b_iskele.png", "assets/b_kam1.png", "assets/b_kam2.png", "assets/b_kececi1.png", "assets/b_kececi2.png", "assets/b_kisla1.png", "assets/b_kisla2.png", "assets/b_ocak1.png", "assets/b_ocak2.png", "assets/b_ocak3.png", "assets/b_oduncu1.png", "assets/b_oduncu2.png", "assets/b_tarla_bos.png", "assets/b_tarla_filiz.png", "assets/b_tarla_kar.png", "assets/b_tarla_olgun.png", "assets/ikon192.png", "assets/ikon512.png", "assets/k_bey.jpg", "assets/k_cakal.jpg", "assets/k_demirci.jpg", "assets/k_haydut.jpg", "assets/k_karaatli.jpg", "assets/k_kurgan.jpg", "assets/k_yagma.jpg", "assets/map.jpg", "assets/portre.jpg", "assets/s_baslik.jpg", "assets/s_gecis.jpg", "assets/u_atli.png", "assets/u_atliokcu.png", "assets/u_baskinci.png", "assets/u_erkek.png", "assets/u_kadin.png", "assets/u_koyun.png", "assets/u_kurt.png", "assets/u_mizrakci.png", "assets/u_okcu.png", "assets/u_zirhli.png"];
+self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
+self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url); if (url.origin !== location.origin) return;
+  // önce ağ (güncel sürüm), ağ yoksa önbellek
+  // önce ağ (güncel sürüm) ama en çok 3 sn; ağ yoksa önbellek. Ana sayfaya düşüş yalnızca sayfa isteklerinde.
+  const net = fetch(e.request).then(r => { if (r.ok) { const cp = r.clone(); caches.open(VERSION).then(c => c.put(e.request, cp)); } return r; });
+  const timeout = new Promise((_, no) => setTimeout(() => no(new Error('yavaş')), 3000));
+  e.respondWith(Promise.race([net, timeout]).catch(() => caches.match(e.request, { ignoreSearch: true })
+    .then(r => r || (e.request.mode === 'navigate' ? caches.match('./') : net))));
+});

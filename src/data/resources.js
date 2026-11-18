@@ -1,0 +1,11 @@
+export const RES = ['wheat', 'meat', 'wood', 'wool', 'felt', 'iron'];
+export const RES_AD = { wheat: 'Buğday', meat: 'Et', wood: 'Odun', wool: 'Yün', felt: 'Keçe', iron: 'Demir' };
+export const RES_AGE = { wheat: 1, meat: 1, wood: 1, wool: 1, felt: 1, iron: 2 };
+export const FOOD_ORDER = ['meat', 'wheat'];           // önce et yenir
+export const START_RES = { wheat: 120, meat: 60, wood: 100, wool: 0, felt: 30, iron: 0 };
+export const BASE_CAP = { wheat: 400, meat: 400, wood: 400, wool: 300, felt: 300, iron: 200 };
+export const EAT_PER_S = 0.0045;                        // kişi ve asker başına yiyecek / s
+export const WINTER_EAT = 1.25;
+export const SEASON_MS = 30 * 60 * 1000;
+export const SEASONS = ['İlkbahar', 'Yaz', 'Sonbahar', 'Kış'];
+export const OFFLINE_CAP_MS = 12 * 3600 * 1000;
