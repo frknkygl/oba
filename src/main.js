@@ -8,10 +8,12 @@ import { UNITS } from './data/units.js';
 import { RESEARCH } from './data/research.js';
 import { CAMPS } from './data/camps.js';
 import { SEASONS, OFFLINE_CAP_MS } from './data/resources.js';
-import { ALL_SPRITES } from './data/sprites.js';
 import * as save from './core/save.js';
 import * as clock from './core/clock.js';
-import { createView } from './render/view.js';
+import { createView } from './render/view3d.js';
+import { setGlb } from './render/models.js';
+import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { loadAll } from './render/glbload.js';
 import { createPeople } from './render/people.js';
 import { createInput } from './input.js';
 import { createHud } from './ui/hud.js';
@@ -33,21 +35,19 @@ let muted = false; try { muted = localStorage.getItem('oba-ses') === '0'; } catc
 audio.setMuted(muted);
 for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => audio.unlock(), { passive: true });
 
-function loadOnce(src) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error(src)); i.src = src; }); }
-async function loadImg(src) { for (let k = 0; ; k++) { try { return await loadOnce(k ? src + '?r=' + k : src); } catch (e) { if (k >= 3) throw e; await new Promise(r => setTimeout(r, 400 * (k + 1))); } } }
-const bar = document.querySelector('#loading s');
-const names = ['map', ...ALL_SPRITES];
-let loaded = 0;
-const img = {};
-try {
-  await Promise.all(names.map(n => loadImg('assets/' + n + (n === 'map' ? '.jpg' : '.png')).then(i => { img[n] = i; bar.style.width = (++loaded / names.length * 100) + '%'; })));
-} catch (e) {
-  document.querySelector('#loading span').textContent = 'Resimler yüklenemedi. Bağlantını kontrol edip sayfayı yenile.';
+const bar = document.querySelector('#loading s'), yaz = t => { document.querySelector('#loading span').textContent = t; };
+// Higgsfield modelleri: yüklenemezse o yapının kodla yapılmış hali görünür.
+const GLBS = { ocak: 'assets/m_ocak.glb', kisla: 'assets/m_kisla.glb' };
+const loader = new GLTFLoader();
+await loadAll(GLBS, { load: (url, ok, no) => loader.load(url, ok, undefined, no), use: setGlb, timeout: 8000, onProgress: f => { bar.style.width = (f * 100) + '%'; } });
+let view;
+try { view = createView(canvas); } catch (e) {
+  yaz('Bu cihaz 3D çizimi desteklemiyor. Tarayıcını güncelleyip yeniden dene.');
   throw e;
 }
 document.getElementById('loading').remove();
 
-const view = createView(canvas, img), people = createPeople(view);
+const people = createPeople(view);
 const relayout = () => requestAnimationFrame(() => view.resize());
 addEventListener('resize', relayout); addEventListener('orientationchange', () => setTimeout(relayout, 250));
 if (window.visualViewport) visualViewport.addEventListener('resize', relayout);
@@ -168,22 +168,25 @@ let oturumVar = false; try { oturumVar = !!localStorage.getItem('oba-oturum'); }
 modals.open('title', { oturum: oturumVar || !!save.load() });
 
 function frame() {
+  requestAnimationFrame(frame);
+  try { frameBody(); } catch (e) { console.error(e); }
+}
+function frameBody() {
   const t = performance.now(), dt = Math.min(0.1, (t - lastFrame) / 1000); lastFrame = t;
   if (s) {
     const now = clock.now(); handle(advance(s, now));
     const hint = guide.update(s);
     if (hint !== lastHint) { lastHint = hint; if (hint !== null && sel === null) view.glide(hint); }
-    view.draw(s, t, { selected: sel, hint, showPlots: sel === null && !modals.kind, people: people.list(s, t), dt });
+    people.update(s, t); view.draw(s, t, { selected: sel, hint, showPlots: sel === null && !modals.kind, dt });
     if (t - lastUi > 250) {
       lastUi = t; hud.update(s, now, unread); hud.baglanti(sunucu.cevrimici, sunucu.bekleyen); panel.render(); if (modals.kind === 'sefer' || modals.kind === 'rapor') modals.render();
       music.setMood(s.raid && s.raid.seen ? 'gerilim' : isWinter(s) ? 'gece' : 'sakin'); audio.setWind(isWinter(s) ? 0.8 : 0.35);
     }
     if (t - lastSave > 10000 || (dirty && t - lastSave > 1500)) persist();
   } else {
-    view.draw(createState.preview || (createState.preview = createState(1, 0)), t, { people: [], dt });
+    view.draw(createState.preview || (createState.preview = createState(1, 0)), t, { dt });
   }
   music.update(); audio.update(dt);
-  requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 window.__oba = { get s() { return s; }, view, clock, cmd, modals, panel, sunucu };
